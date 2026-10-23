@@ -1,0 +1,13 @@
+{
+  "lesson": "C42",
+  "title": "Sandbox and Host Boundaries",
+  "path": "lesson-c42\\lesson-c42-app",
+  "port": 3042,
+  "scenarios": 3,
+  "state": "implemented and verified",
+  "liveScope": "text-only commentary about the local result",
+  "typecheck": true,
+  "localTests": true,
+  "browserSmoke": "passed: desktop, mobile, scenario controls, source view",
+  "liveCommentarySmoke": "passed: real text-only session reached end_turn"
+}

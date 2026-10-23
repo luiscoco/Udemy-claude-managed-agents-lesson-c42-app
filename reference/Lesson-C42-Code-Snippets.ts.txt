@@ -1,0 +1,49 @@
+// Read-only illustration for a published host snapshot.
+// PRECONDITION: root, ancestors and file contents cannot be modified by an
+// untrusted process during the operation. Canonical checks alone do not solve
+// check/open races, hostile hard links or attacker-writable parent directories.
+import path from "node:path";
+import fs from "node:fs/promises";
+import { z } from "zod";
+export function within(root: string, candidate: string, api = path): boolean {
+  const relative = api.relative(root, candidate);
+  return relative !== "" && !api.isAbsolute(relative) && relative !== ".." &&
+    !relative.startsWith(".." + api.sep);
+}
+const RelativePath = z.string().min(1).max(240).refine(value =>
+  !value.includes("\\") && !path.posix.isAbsolute(value) && !path.win32.isAbsolute(value) &&
+  value.split("/").every(part => /^[A-Za-z0-9_.-]+$/.test(part) && part !== "." && part !== ".."));
+export async function readPublishedSnapshot(rootPath: string, rawPath: unknown): Promise<string> {
+  const requested = RelativePath.parse(rawPath);
+  const root = await fs.realpath(rootPath); // Trusted host-owned published root.
+  const lexical = path.resolve(root, requested);
+  if (!within(root, lexical)) throw new Error("Outside root");
+  const canonical = await fs.realpath(lexical); // Resolves symlinks/junctions.
+  if (!within(root, canonical)) throw new Error("Canonical path outside root");
+  const file = await fs.open(canonical, "r");
+  try {
+    const stat = await file.stat();
+    if (!stat.isFile() || stat.size > 65536) throw new Error("Not a bounded regular file");
+    const bytes = Buffer.alloc(65537); // One extra byte detects growth past the limit.
+    let length = 0;
+    while (length < bytes.length) {
+      const next = await file.read(bytes, length, bytes.length - length, null);
+      if (!next.bytesRead) break;
+      length += next.bytesRead;
+    }
+    if (length > 65536) throw new Error("File exceeds limit");
+    return bytes.subarray(0, length).toString("utf8");
+  } finally { await file.close(); }
+}
+export type PublishedFile = { ownerId: string; relativePath: string };
+export async function readForOwner(ownerId: string, fileId: string, root: string,
+  manifest: ReadonlyMap<string, PublishedFile>) {
+  const file = manifest.get(fileId);
+  if (!file || file.ownerId !== ownerId) throw new Error("Unknown or unauthorized file");
+  return readPublishedSnapshot(root, file.relativePath);
+}
+// Prefer opaque file IDs with a host manifest to arbitrary model-selected paths.
+// This helper never writes files or bridges data into a remote sandbox.
+// Use OS-enforced isolation/handle-relative no-follow operations or a dedicated
+// file service when an adversary can mutate the tree. No universal race-safe
+// cross-platform filesystem boundary is claimed by this teaching helper.

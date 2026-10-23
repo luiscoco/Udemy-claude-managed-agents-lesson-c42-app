@@ -1,0 +1,28 @@
+{
+  "source": "live-provider-commentary",
+  "sessionId": "sesn_01Gb1HJp8tpnhZkpD9aLAZYT",
+  "answer": "This local experiment tests whether a sandbox correctly reads from an authorized, immutable local manifest without accessing arbitrary files. The outcome was a pass, confirming the host-owned inventory was used appropriately. Importantly, this is a local check only and does not demonstrate cloud OS isolation or remote integration.",
+  "stopReason": "end_turn",
+  "eventTypes": [
+    "session.status_running",
+    "session.thread_status_running",
+    "user.message",
+    "span.model_request_start",
+    "agent.message",
+    "span.model_request_end",
+    "session.thread_status_idle",
+    "session.usage",
+    "session.status_idle"
+  ],
+  "requestUsage": [
+    {
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "input_tokens": 619,
+      "output_tokens": 63,
+      "speed": "standard"
+    }
+  ],
+  "experimentHash": "f00a61bb521d8240fe789a697b95d495c682543e33b5a2391de5d2fa218156f0",
+  "scope": "A real text-only model response about the local experiment. External integrations and the experiment's correctness are not certified by this response."
+}
