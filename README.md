@@ -42,27 +42,81 @@ CLAUDE_MANAGED_ENVIRONMENT_ID=your_environment_id
 PORT=3042
 ```
 
-## How the application was developed
+## How the app was build
 
-The browser collects inputs; the Node host validates requests; the lesson implementation produces observable evidence. The architecture page walks through the real source with numbered steps, prerequisite configuration, source filenames and code excerpts.
+### 1. Resolve a published file through a host manifest
 
-### Lesson implementation
+The manifest maps opaque IDs to owner, exact path and content. It is host-owned inventory, rather than unrestricted access to a model-selected filesystem path.
 
-[src/lesson.ts](https://github.com/luiscoco/Udemy-claude-managed-agents-lesson-c42-app/blob/main/src/lesson.ts)
+Source: [src/lesson.ts](src/lesson.ts#L13) · selected statements
 
 ```typescript
-  async run(input) {
+const request = text(input, "requestedPath"),
+  manifest: Record<string, { owner: string; path: string; text: string }> = {
+    guide: {
+      owner: "demo-user",
+      path: "reports/guide.txt",
+      text: "Reviewed field guide",
+    },
+    private: { owner: "other-user", path: "reports/private.txt", text: "Private" },
+  };
 
-const request=text(input,"requestedPath"),manifest:Record<string,{owner:string;path:string;text:string}>={guide:{owner:"demo-user",path:"reports/guide.txt",text:"Reviewed field guide"},private:{owner:"other-user",path:"reports/private.txt",text:"Private"}};
-const file=manifest[text(input,"fileId")];
-if(!safePath(request)||!file||file.owner!=="demo-user"||file.path!==request)return report("rejected","The host manifest did not authorize this file and path",{},["Resolve an opaque file identifier","Check ownership and exact published path"]);
-return report("passed","Read authorized bytes from the immutable local manifest",{content:file.text,sha256:hash(file.text),cloudTransfer:false},["Use host-owned inventory","Avoid arbitrary model-selected file access","Do not equate this local check with cloud OS isolation"]);
-
-  }
-};
+const file = manifest[text(input, "fileId")];
 ```
 
-Read the architecture page for the remaining source excerpts and explanations, including input handling and optional provider behavior. The diagram describes this application, rather than implying that an external integration has been implemented.
+### 2. Check path and ownership before returning bytes
+
+The requested path must be safe and equal the selected owned entry. The response hashes the returned content and keeps cloudTransfer false; local validation is not proof of cloud filesystem isolation.
+
+Source: [src/lesson.ts](src/lesson.ts#L15) · selected statements
+
+```typescript
+if (
+  !safePath(request) ||
+  !file ||
+  file.owner !== "demo-user" ||
+  file.path !== request
+)
+  return report(
+    "rejected",
+    "The host manifest did not authorize this file and path",
+    {},
+    [
+      "Resolve an opaque file identifier",
+      "Check ownership and exact published path",
+    ],
+  );
+
+return report(
+  "passed",
+  "Read authorized bytes from the immutable local manifest",
+  { content: file.text, sha256: hash(file.text), cloudTransfer: false },
+  [
+    "Use host-owned inventory",
+    "Avoid arbitrary model-selected file access",
+    "Do not equate this local check with cloud OS isolation",
+  ],
+);
+```
+
+### Check your understanding
+
+Run **Read an owned published file** in the application. Compare the result with these scenario expectations:
+
+```json
+{
+  "input": {
+    "fileId": "guide",
+    "requestedPath": "reports/guide.txt"
+  },
+  "expectedOutcome": "passed",
+  "checkEvidence": {
+    "content": "Reviewed field guide"
+  }
+}
+```
+
+Then try **Reject traversal**. Its expected outcome is `rejected`; identify the condition or evidence field that explains the difference.
 
 ## Validation
 
